@@ -161,7 +161,7 @@
    (DocumentSnapshot->clj doc snapshot-options expose-objects nil))
   ([doc snapshot-options expose-objects sure-exists]
    {:data (when (or sure-exists (.-exists doc))
-            (js->clj (.data doc (clj->SnapshotOptions snapshot-options))))
+            (js->clj (.data doc (clj->SnapshotOptions snapshot-options)) :keywordize-keys true))
     :id (.-id doc)
     :metadata (SnapshotMetadata->clj (.-metadata doc))
     :ref (PathReference->clj (.-ref doc))
@@ -230,22 +230,23 @@
   {:pre [(utils/validate (s/nilable :re-frame/vec-or-fn) callback)]}
   (when callback #((re-utils/event->fn callback) (PathReference->clj %))))
 
+(defn keyword-fn [kw] (.substring (str kw) 1))
 
 ;; re-frame Effects/Subscriptions
 (defn- setter
   ([path data set-options]
    (.set (clj->DocumentReference path)
-         (clj->js data)
+         (clj->js data :keyword-fn keyword-fn)
          (clj->SetOptions set-options)))
   ([instance path data set-options]
    (.set instance
          (clj->DocumentReference path)
-         (clj->js data)
+         (clj->js data :keyword-fn keyword-fn)
          (clj->SetOptions set-options))))
 
 (defn- updater
-  ([path data] (.update (clj->DocumentReference path) (clj->js data)))
-  ([instance path data] (.update instance (clj->DocumentReference path) (clj->js data))))
+  ([path data] (.update (clj->DocumentReference path) (clj->js data :keyword-fn keyword-fn)))
+  ([instance path data] (.update instance (clj->DocumentReference path) (clj->js data :keyword-fn keyword-fn))))
 
 (defn- deleter
   ([path] (.delete (clj->DocumentReference path)))
@@ -272,7 +273,7 @@
     (promise-wrapper (.commit batch-instance) on-success on-failure)))
 
 (defn- adder [path data]
-  (.add (clj->CollectionReference path) (clj->js data)))
+  (.add (clj->CollectionReference path) (clj->js data :keyword-fn keyword-fn)))
 
 (defn add-effect [{:keys [path data on-success on-failure]}]
   (promise-wrapper (adder path data) (reference-parser-wrapper on-success) on-failure))
