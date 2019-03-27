@@ -1,5 +1,6 @@
 (ns com.degel.re-frame-firebase.firestore
   (:require
+   [cognitect.transit :as transit]
    [clojure.spec.alpha :as s]
    [clojure.string :as str]
    [re-frame.core :as re-frame]
@@ -244,8 +245,14 @@
          (clj->SetOptions set-options))))
 
 (defn- updater
-  ([path data] (.update (clj->DocumentReference path) (clj->js data)))
-  ([instance path data] (.update instance (clj->DocumentReference path) (clj->js data))))
+  ([path data]
+   (let [writer    (transit/writer :json)
+         json-data (.parse js/JSON (transit/write writer data))]
+     (.update (clj->DocumentReference path) json-data)))
+  ([instance path data]
+   (let [writer    (transit/writer :json)
+         json-data (.parse js/JSON (transit/write writer data))]
+     (.update instance (clj->DocumentReference path) json-data))))
 
 (defn- deleter
   ([path] (.delete (clj->DocumentReference path)))
@@ -272,7 +279,9 @@
     (promise-wrapper (.commit batch-instance) on-success on-failure)))
 
 (defn- adder [path data]
-  (.add (clj->CollectionReference path) (clj->js data)))
+  (let [writer (transit/writer :json)
+        json-data (.parse js/JSON (transit/write writer data))])
+  (.add (clj->CollectionReference path) json-data))
 
 (defn add-effect [{:keys [path data on-success on-failure]}]
   (promise-wrapper (adder path data) (reference-parser-wrapper on-success) on-failure))
